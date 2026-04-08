@@ -1,0 +1,5 @@
+.DS_Store
+node_modules/
+com.jordansteele.aftereffects.sdPlugin/
+dist/
+npm-debug.log*

@@ -1,0 +1,48 @@
+{
+  "Name": "After Effects",
+  "Version": "1.0.0.0",
+  "Author": "Jordan Steele",
+  "UUID": "com.jordansteele.aftereffects",
+  "Description": "Assign After Effects .jsx scripts to Stream Deck buttons and run them with a keypress.",
+  "Category": "After Effects",
+  "CategoryIcon": "imgs/category-icon",
+  "Icon": "imgs/plugin-icon",
+  "SDKVersion": 2,
+  "Software": {
+    "MinimumVersion": "6.7"
+  },
+  "OS": [
+    {
+      "Platform": "mac",
+      "MinimumVersion": "10.15"
+    },
+    {
+      "Platform": "windows",
+      "MinimumVersion": "10"
+    }
+  ],
+  "Nodejs": {
+    "Version": "20",
+    "Debug": "enabled"
+  },
+  "CodePath": "bin/plugin.js",
+  "Actions": [
+    {
+      "Name": "Run Script",
+      "UUID": "com.jordansteele.aftereffects.run-script",
+      "Icon": "imgs/category-icon",
+      "Tooltip": "Run an After Effects script (.jsx) file or inline script",
+      "PropertyInspectorPath": "pi/inspector.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/action-default",
+          "TitleAlignment": "middle",
+          "FontSize": 12
+        }
+      ]
+    }
+  ]
+}

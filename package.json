@@ -1,0 +1,28 @@
+{
+  "name": "after-effects-stream-deck-plugin",
+  "version": "1.0.0",
+  "description": "Stream Deck plugin to interact with After Effects",
+  "type": "module",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c -w",
+    "package": "npm run build && npx streamdeck pack com.jordansteele.aftereffects.sdPlugin -o dist -f"
+  },
+  "keywords": ["streamdeck", "after-effects", "plugin"],
+  "author": "Jordan Steele",
+  "license": "MIT",
+  "dependencies": {
+    "@elgato/streamdeck": "^2.0.4"
+  },
+  "devDependencies": {
+    "@elgato/cli": "^1.7.3",
+    "@rollup/plugin-commonjs": "^29.0.2",
+    "@rollup/plugin-node-resolve": "^16.0.3",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@tsconfig/node20": "^20.1.9",
+    "@types/node": "^25.5.0",
+    "rollup": "^4.60.0",
+    "tslib": "^2.8.1",
+    "typescript": "^6.0.2"
+  }
+}
