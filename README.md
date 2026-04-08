@@ -1,127 +1,136 @@
 # After Effects for Stream Deck
 
-A Stream Deck plugin that lets you run Adobe After Effects ExtendScript (.jsx) files, inline scripts, or menu commands with a single button press.
+Trigger After Effects scripts and menu commands from Stream Deck with one press. Set up your Stream Deck shortcuts once and use them for every version of After Effects you use.
+
+This plugin adds two actions to Stream Deck:
+
+- `Run Script` for `.jsx` / `.jsxbin` files or short inline ExtendScript snippets
+- `Menu Command` for exact After Effects menu commands or known command IDs
 
 ## Features
 
-- **Run Script action** — Point a button at any `.jsx` file on disk or write a short inline script directly in Stream Deck
-- **Menu Command action** — Execute an AE menu command by numeric command ID or by menu command string lookup
-- **AE version targeting** — Choose which After Effects installation to target:
-  - **Newest** — Automatically picks the running AE with the highest version year
-  - **Foreground** — Targets whichever AE window is currently in focus
-  - **Pinned** — Lock to a specific installed AE version
-- **Visual feedback** — Button shows running (amber), success (green), or error (red) states
-- **Cross-platform** — Works on macOS and Windows
+- Run `.jsx` and `.jsxbin` files from Stream Deck
+- Write short inline ExtendScript directly in the Property Inspector
+- Trigger After Effects menu commands by exact menu string or numeric command ID
+- Target the foreground AE app, the newest running AE instance, or a pinned installed version
+- Use the same targeting options across both actions
+- See running, success, and error feedback directly on the key
 
-## Requirements
+## Actions
 
-- [Stream Deck](https://www.elgato.com/stream-deck) software 6.7+
-- [Node.js](https://nodejs.org/) 20+
-- Adobe After Effects (any recent version with ExtendScript support)
+### Run Script
 
-## Installation
+Use this when the button should run ExtendScript directly.
 
-### From source
+- `Script File` points at a `.jsx` or `.jsxbin` file on disk
+- `Inline Script` is useful for short snippets and quick one-off actions
 
-1. Clone this repository:
-   ```bash
-   git clone https://github.com/jordan-steele/after-effects-stream-deck-plugin.git
-   cd after-effects-stream-deck-plugin
-   ```
+<img src="docs/screenshots/run-script.png" alt="Run Script inspector" width="700" />
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+### Menu Command
 
-3. Build the plugin:
-   ```bash
-   npm run build
-   ```
+Use this when the button should trigger an existing After Effects menu item.
 
-4. Link the plugin for development:
-   ```bash
-   npx streamdeck link com.jordansteele.aftereffects.sdPlugin
-   ```
+- `Menu Command String` runs `app.executeCommand(app.findMenuCommandId("..."))`
+- `Command ID` runs `app.executeCommand(id)`
+- Menu command strings are case sensitive and must match the After Effects menu text exactly
+- If no exact menu-command match is found, the action fails instead of executing command ID `0`
 
-5. Restart Stream Deck to pick up the new plugin.
+<img src="docs/screenshots/menu-command.png" alt="Menu Command inspector" width="700" />
 
-### Development mode
+## AE Targeting
 
-Use watch mode to automatically rebuild and restart the plugin on changes:
+Both actions support the same target selection:
 
-```bash
-npm run watch
-```
+- `Use foreground AE` targets the AE instance currently in front
+- `Always use newest` targets the running AE instance with the highest version
+- `Installed versions` pins a button to a specific installed AE version
 
-The build assembles the generated Stream Deck package at
-`com.jordansteele.aftereffects.sdPlugin/` from source files in
-`plugin/`, `ui/`, `assets/`, and `src/`.
+The inspector also shows the currently detected running AE instance while it is open.
 
-## Usage
+## Install
 
-### Adding a button
+### Download a release
 
-1. Open the Stream Deck application
-2. Find **After Effects > Run Script** or **After Effects > Menu Command** in the action list on the right
-3. Drag it onto a button slot
+Download the latest `.streamDeckPlugin` from the repository Releases page and open it to install:
 
-### Configuring the button
+`https://github.com/jordan-steele/after-effects-stream-deck-plugin/releases/latest`
 
-Click the button in Stream Deck to open the Property Inspector with these settings:
+### Add a button
 
-#### Run Script action
+1. Open Stream Deck.
+2. Find `After Effects > Run Script` or `After Effects > Menu Command`.
+3. Drag the action onto a key.
+4. Configure the action in the Property Inspector.
 
-- **Script File** — Enter the full path to a `.jsx` file (e.g., `/Users/you/scripts/render.jsx`)
-- **Inline Script** — Type ExtendScript directly into the text area. A warning appears if the script exceeds ~10 lines (at that point, a standalone file is easier to maintain)
+## Button Feedback
 
-#### Menu Command action
-
-- **Command ID** — Enter the numeric After Effects command ID and the button runs `app.executeCommand(id)`
-- **Menu Command String** — Enter the menu command name and the button runs `app.executeCommand(app.findMenuCommandId("..."))`
-- Menu command strings are case sensitive and must match the After Effects menu text exactly. If no exact match is found, the action fails instead of running command ID `0`.
-
-#### AE Target
-
-- **Use foreground AE** — Targets whichever AE instance is currently the frontmost application (falls back to newest if no AE is in the foreground)
-- **Always use newest** — Targets the running AE instance with the highest version number
-- **Installed versions** — Lists all locally installed AE versions; selecting one pins the button to that specific version
-
-A status line below the dropdown shows the currently detected running AE instance.
-
-### Button states
-
-When you press the button:
+When you press a button:
 
 | State | Color | Meaning |
 |-------|-------|---------|
-| Running | Amber | Script is being sent to After Effects |
-| Success | Green | Script executed without errors |
-| Error | Red | Script failed or no AE instance was found |
+| Running | Amber | The command or script is being sent to After Effects |
+| Success | Green | The action completed without an execution error |
+| Error | Red | The action failed or no suitable AE instance was found |
 
-The button resets to its default appearance after 2 seconds.
+The key resets to its default appearance after 2 seconds.
 
-## Project Structure
+## Development
 
+### Local setup
+
+```bash
+git clone https://github.com/jordan-steele/after-effects-stream-deck-plugin.git
+cd after-effects-stream-deck-plugin
+npm install
 ```
+
+### Commands
+
+```bash
+npm run build
+npm run watch
+npm run package
+```
+
+- `npm run build` assembles the plugin at `com.jordansteele.aftereffects.sdPlugin/`
+- `npm run watch` rebuilds on change
+- `npm run package` builds and creates a `.streamDeckPlugin` package in `dist/`
+
+### Link for local testing
+
+```bash
+npx streamdeck link com.jordansteele.aftereffects.sdPlugin
+```
+
+Restart Stream Deck after linking if the plugin does not appear immediately.
+
+### Release automation
+
+The release workflow lives at `.github/workflows/release.yml`.
+
+- Publishing a GitHub Release builds the plugin, packages it, and uploads the `.streamDeckPlugin` file to that Release
+- The same workflow can also be run manually with `workflow_dispatch`
+- Packaging uses `--no-update-check` so CI does not depend on npm registry update checks from the Stream Deck CLI
+
+### Project structure
+
+```text
+├── .github/workflows/release.yml
+├── docs/screenshots/
 ├── plugin/
-│   └── manifest.json          # Source manifest copied into the package root
+│   └── manifest.json
 ├── ui/
-│   └── inspector.html         # Source Property Inspector UI
+│   └── inspector.html
 ├── assets/
-│   └── imgs/                  # Source plugin and action icons
+│   └── imgs/
 ├── src/
-│   ├── plugin.ts              # Entry point — registers actions and connects to SD
-│   ├── run-script-action.ts   # Run Script action handler
-│   ├── menu-command-action.ts # Menu Command action handler
-│   ├── script-runner.ts       # Executes scripts via file or inline mode
-│   ├── ae-detection.ts        # Finds installed/running AE instances (mac + win)
-│   └── settings.ts            # TypeScript types for action settings and PI messages
-├── com.jordansteele.aftereffects.sdPlugin/
-│   ├── manifest.json          # Generated plugin package root
-│   ├── pi/                    # Copied UI assets
-│   ├── imgs/                  # Copied icon assets
-│   └── bin/                   # Built output
-├── rollup.config.mjs          # Rollup bundler configuration
-└── tsconfig.json
+│   ├── plugin.ts
+│   ├── run-script-action.ts
+│   ├── menu-command-action.ts
+│   ├── script-runner.ts
+│   ├── ae-detection.ts
+│   └── settings.ts
+├── rollup.config.mjs
+└── package.json
 ```
