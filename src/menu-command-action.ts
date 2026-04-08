@@ -1,27 +1,26 @@
 import {
   action,
   KeyDownEvent,
-  SingletonAction,
   SendToPluginEvent,
+  SingletonAction,
 } from "@elgato/streamdeck";
 import type { JsonValue } from "@elgato/utils";
 import type {
-  InstalledAEVersionsResponse,
   DetectedAEResponse,
   GetDetectedAERequest,
-  RunScriptActionSettings,
+  InstalledAEVersionsResponse,
+  MenuCommandActionSettings,
 } from "./settings.js";
 import {
-  resolveAEPath,
-  getInstalledAEVersions,
   detectCurrentAE,
+  getInstalledAEVersions,
+  resolveAEPath,
 } from "./ae-detection.js";
-import { runScriptFile, runInlineScript } from "./script-runner.js";
+import { runInlineScript } from "./script-runner.js";
 import streamDeck from "@elgato/streamdeck";
 
-const logger = streamDeck.logger.createScope("RunScript");
+const logger = streamDeck.logger.createScope("MenuCommand");
 
-// SVG icons for key states (colored circles with icons)
 const ICON_RUNNING = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144"><rect fill="#E8A317" width="144" height="144" rx="20"/><text x="72" y="90" text-anchor="middle" fill="white" font-size="60" font-family="Arial">▶</text></svg>`;
 const ICON_SUCCESS = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144"><rect fill="#2E7D32" width="144" height="144" rx="20"/><text x="72" y="95" text-anchor="middle" fill="white" font-size="70" font-family="Arial">✓</text></svg>`;
 const ICON_ERROR = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 144 144"><rect fill="#C62828" width="144" height="144" rx="20"/><text x="72" y="95" text-anchor="middle" fill="white" font-size="70" font-family="Arial">✕</text></svg>`;
@@ -30,13 +29,40 @@ function toBase64Svg(svg: string): string {
   return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
 }
 
-@action({ UUID: "com.jordansteele.aftereffects.run-script" })
-export class RunScriptAction extends SingletonAction<RunScriptActionSettings> {
-  /**
-   * Handle messages from the Property Inspector.
-   */
+function buildMenuCommandScript(settings: MenuCommandActionSettings): string | null {
+  const commandMode = settings.commandMode ?? "string";
+
+  if (commandMode === "id") {
+    const value = settings.commandId?.trim();
+    if (!value || !/^\d+$/.test(value)) {
+      return null;
+    }
+
+    const commandId = Number.parseInt(value, 10);
+    if (!Number.isInteger(commandId) || commandId <= 0) {
+      return null;
+    }
+
+    return `app.executeCommand(${commandId});`;
+  }
+
+  const commandString = settings.commandString?.trim();
+  if (!commandString) {
+    return null;
+  }
+
+  return `var commandName = ${JSON.stringify(commandString)};
+var commandId = app.findMenuCommandId(commandName);
+if (!commandId) {
+  throw new Error("No After Effects menu command found for: " + commandName);
+}
+app.executeCommand(commandId);`;
+}
+
+@action({ UUID: "com.jordansteele.aftereffects.menu-command" })
+export class MenuCommandAction extends SingletonAction<MenuCommandActionSettings> {
   override async onSendToPlugin(
-    ev: SendToPluginEvent<JsonValue, RunScriptActionSettings>
+    ev: SendToPluginEvent<JsonValue, MenuCommandActionSettings>
   ): Promise<void> {
     const payload = ev.payload as Record<string, unknown>;
 
@@ -63,36 +89,24 @@ export class RunScriptAction extends SingletonAction<RunScriptActionSettings> {
     }
   }
 
-  /**
-   * When a key is pressed, resolve the AE target and execute the script.
-   */
   override async onKeyDown(
-    ev: KeyDownEvent<RunScriptActionSettings>
+    ev: KeyDownEvent<MenuCommandActionSettings>
   ): Promise<void> {
     const settings = ev.payload.settings;
     const action = ev.action;
-    const scriptMode = settings.scriptMode ?? "file";
+    const script = buildMenuCommandScript(settings);
 
-    // Validate settings
-    if (scriptMode === "file" && !settings.scriptPath) {
-      logger.warn("No script path configured");
+    if (!script) {
+      logger.warn("No valid menu command configured");
       await action.showAlert();
       return;
     }
 
-    if (scriptMode === "inline" && !settings.inlineScript) {
-      logger.warn("No inline script configured");
-      await action.showAlert();
-      return;
-    }
-
-    // Show running state
     if (action.isKey()) {
       await action.setImage(toBase64Svg(ICON_RUNNING));
     }
 
     try {
-      // Resolve the AE binary
       const resolved = await resolveAEPath(
         settings.aeTargetMode ?? "foreground",
         settings.pinnedAEPath ?? null
@@ -110,23 +124,15 @@ export class RunScriptAction extends SingletonAction<RunScriptActionSettings> {
 
       logger.info(`Targeting ${resolved.name} at ${resolved.path}`);
 
-      // Execute the script
-      if (scriptMode === "file") {
-        // Decode in case the PI saved a URI-encoded path
-        const scriptPath = decodeURIComponent(settings.scriptPath!);
-        await runScriptFile(resolved.path, scriptPath, resolved.pid);
-      } else {
-        await runInlineScript(resolved.path, settings.inlineScript!, resolved.pid);
-      }
+      await runInlineScript(resolved.path, script, resolved.pid);
 
-      // Show success
       if (action.isKey()) {
         await action.setImage(toBase64Svg(ICON_SUCCESS));
         this.resetKeyAfterDelay(action);
       }
-      logger.info("Script executed successfully");
+      logger.info("Menu command executed successfully");
     } catch (err) {
-      logger.error("Script execution failed", err);
+      logger.error("Menu command execution failed", err);
       if (action.isKey()) {
         await action.setImage(toBase64Svg(ICON_ERROR));
         this.resetKeyAfterDelay(action);
@@ -134,17 +140,13 @@ export class RunScriptAction extends SingletonAction<RunScriptActionSettings> {
     }
   }
 
-  /**
-   * Reset the key image back to default after a short delay.
-   */
   private resetKeyAfterDelay(
-    action: KeyDownEvent<RunScriptActionSettings>["action"],
+    action: KeyDownEvent<MenuCommandActionSettings>["action"],
     ms = 2000
   ): void {
     setTimeout(async () => {
       try {
         if (action.isKey()) {
-          // Setting image to undefined resets to the manifest default
           await action.setImage(undefined);
           await action.setTitle(undefined);
         }

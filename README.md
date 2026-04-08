@@ -1,11 +1,11 @@
 # After Effects for Stream Deck
 
-A Stream Deck plugin that lets you run Adobe After Effects ExtendScript (.jsx) files or inline scripts with a single button press.
+A Stream Deck plugin that lets you run Adobe After Effects ExtendScript (.jsx) files, inline scripts, or menu commands with a single button press.
 
 ## Features
 
-- **Script file mode** — Point a button at any `.jsx` file on disk
-- **Inline script mode** — Write short scripts directly in the Stream Deck UI
+- **Run Script action** — Point a button at any `.jsx` file on disk or write a short inline script directly in Stream Deck
+- **Menu Command action** — Execute an AE menu command by numeric command ID or by menu command string lookup
 - **AE version targeting** — Choose which After Effects installation to target:
   - **Newest** — Automatically picks the running AE with the highest version year
   - **Foreground** — Targets whichever AE window is currently in focus
@@ -63,17 +63,23 @@ The build assembles the generated Stream Deck package at
 ### Adding a button
 
 1. Open the Stream Deck application
-2. Find **After Effects > Run Script** in the action list on the right
+2. Find **After Effects > Run Script** or **After Effects > Menu Command** in the action list on the right
 3. Drag it onto a button slot
 
 ### Configuring the button
 
 Click the button in Stream Deck to open the Property Inspector with these settings:
 
-#### Script Mode
+#### Run Script action
 
 - **Script File** — Enter the full path to a `.jsx` file (e.g., `/Users/you/scripts/render.jsx`)
 - **Inline Script** — Type ExtendScript directly into the text area. A warning appears if the script exceeds ~10 lines (at that point, a standalone file is easier to maintain)
+
+#### Menu Command action
+
+- **Command ID** — Enter the numeric After Effects command ID and the button runs `app.executeCommand(id)`
+- **Menu Command String** — Enter the menu command name and the button runs `app.executeCommand(app.findMenuCommandId("..."))`
+- Menu command strings are case sensitive and must match the After Effects menu text exactly. If no exact match is found, the action fails instead of running command ID `0`.
 
 #### AE Target
 
@@ -106,10 +112,11 @@ The button resets to its default appearance after 2 seconds.
 │   └── imgs/                  # Source plugin and action icons
 ├── src/
 │   ├── plugin.ts              # Entry point — registers actions and connects to SD
-│   ├── run-script-action.ts   # Action handler with key state management
+│   ├── run-script-action.ts   # Run Script action handler
+│   ├── menu-command-action.ts # Menu Command action handler
 │   ├── script-runner.ts       # Executes scripts via file or inline mode
 │   ├── ae-detection.ts        # Finds installed/running AE instances (mac + win)
-│   └── settings.ts            # TypeScript types for action settings and messages
+│   └── settings.ts            # TypeScript types for action settings and PI messages
 ├── com.jordansteele.aftereffects.sdPlugin/
 │   ├── manifest.json          # Generated plugin package root
 │   ├── pi/                    # Copied UI assets

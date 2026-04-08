@@ -3,7 +3,7 @@
   "Version": "1.0.0.0",
   "Author": "Jordan Steele",
   "UUID": "com.jordansteele.aftereffects",
-  "Description": "Assign After Effects .jsx scripts to Stream Deck buttons and run them with a keypress.",
+  "Description": "Assign After Effects scripts or menu commands to Stream Deck buttons and run them with a keypress.",
   "Category": "After Effects",
   "CategoryIcon": "imgs/category-icon",
   "Icon": "imgs/plugin-icon",
@@ -39,7 +39,24 @@
       "States": [
         {
           "Image": "imgs/action-default",
-          "TitleAlignment": "middle",
+          "TitleAlignment": "top",
+          "FontSize": 12
+        }
+      ]
+    },
+    {
+      "Name": "Menu Command",
+      "UUID": "com.jordansteele.aftereffects.menu-command",
+      "Icon": "imgs/category-icon",
+      "Tooltip": "Run an After Effects menu command by command ID or menu string",
+      "PropertyInspectorPath": "pi/inspector.html",
+      "Controllers": [
+        "Keypad"
+      ],
+      "States": [
+        {
+          "Image": "imgs/action-default",
+          "TitleAlignment": "top",
           "FontSize": 12
         }
       ]

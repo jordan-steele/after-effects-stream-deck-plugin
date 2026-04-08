@@ -14,15 +14,32 @@ export type AETargetMode = "newest" | "foreground" | "pinned";
 export type ScriptMode = "file" | "inline";
 
 /**
- * Per-button settings stored by Stream Deck.
+ * Whether the menu command action uses a numeric command ID or a menu string.
  */
-export type ActionSettings = {
-  scriptMode: ScriptMode;
-  scriptPath: string | null;
-  inlineScript: string | null;
+export type CommandMode = "id" | "string";
+
+export type BaseActionSettings = {
   aeTargetMode: AETargetMode;
   pinnedAEPath: string | null;
   [key: string]: JsonValue;
+};
+
+/**
+ * Per-button settings for the Run Script action.
+ */
+export type RunScriptActionSettings = BaseActionSettings & {
+  scriptMode: ScriptMode;
+  scriptPath: string | null;
+  inlineScript: string | null;
+};
+
+/**
+ * Per-button settings for the Menu Command action.
+ */
+export type MenuCommandActionSettings = BaseActionSettings & {
+  commandMode: CommandMode;
+  commandId: string | null;
+  commandString: string | null;
 };
 
 /** Message types sent from PI → plugin */

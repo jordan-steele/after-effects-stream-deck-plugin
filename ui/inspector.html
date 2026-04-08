@@ -14,11 +14,15 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
 
-    .script-section {
+    .action-section,
+    .script-section,
+    .command-section {
       display: none;
     }
 
-    .script-section.active {
+    .action-section.active,
+    .script-section.active,
+    .command-section.active {
       display: block;
     }
 
@@ -143,42 +147,64 @@
     .browse-btn:active {
       background: #555;
     }
+
   </style>
 </head>
 
 <body>
-  <!-- Script Mode Toggle -->
-  <sdpi-item label="Script Mode">
-    <select id="scriptMode">
-      <option value="file">Script File</option>
-      <option value="inline">Inline Script</option>
-    </select>
-  </sdpi-item>
+  <div id="runScriptConfig" class="action-section">
+    <sdpi-item label="Script Mode">
+      <select id="scriptMode">
+        <option value="file">Script File</option>
+        <option value="inline">Inline Script</option>
+      </select>
+    </sdpi-item>
 
-  <!-- File Mode Section -->
-  <div id="fileSection" class="script-section active">
-    <sdpi-item label="Script Path">
-      <div class="path-row">
-        <input type="text" id="scriptPath" placeholder="/path/to/script.jsx or .jsxbin"
-          spellcheck="false" />
-        <button id="browseBtn" class="browse-btn" type="button">Browse</button>
+    <div id="fileSection" class="script-section active">
+      <sdpi-item label="Script Path">
+        <div class="path-row">
+          <input type="text" id="scriptPath" placeholder="/path/to/script.jsx or .jsxbin"
+            spellcheck="false" />
+          <button id="browseBtn" class="browse-btn" type="button">Browse</button>
+        </div>
+        <input type="file" id="filePicker" accept=".jsx,.jsxbin" style="display:none" />
+      </sdpi-item>
+    </div>
+
+    <div id="inlineSection" class="script-section">
+      <sdpi-item label="Inline Script">
+        <textarea id="inlineScript" class="inline-editor"
+          placeholder='alert("Hello from AE!");' spellcheck="false"></textarea>
+      </sdpi-item>
+      <div id="inlineWarning" class="inline-warning">
+        ⚠ Scripts over ~10 lines are easier to maintain as .jsx files.
       </div>
-      <input type="file" id="filePicker" accept=".jsx,.jsxbin" style="display:none" />
-    </sdpi-item>
-  </div>
-
-  <!-- Inline Mode Section -->
-  <div id="inlineSection" class="script-section">
-    <sdpi-item label="Inline Script">
-      <textarea id="inlineScript" class="inline-editor"
-        placeholder='alert("Hello from AE!");' spellcheck="false"></textarea>
-    </sdpi-item>
-    <div id="inlineWarning" class="inline-warning">
-      ⚠ Scripts over ~10 lines are easier to maintain as .jsx files.
     </div>
   </div>
 
-  <!-- AE Target -->
+  <div id="menuCommandConfig" class="action-section">
+    <sdpi-item label="Command Mode">
+      <select id="commandMode">
+        <option value="string">Menu Command String</option>
+        <option value="id">Command ID</option>
+      </select>
+    </sdpi-item>
+
+    <div id="commandIdSection" class="command-section">
+      <sdpi-item label="Command ID">
+        <input type="text" id="commandId" placeholder="e.g. 2004" inputmode="numeric"
+          spellcheck="false" />
+      </sdpi-item>
+    </div>
+
+    <div id="commandStringSection" class="command-section">
+      <sdpi-item label="Command String">
+        <input type="text" id="commandString" placeholder="e.g. Convert To Bezier Path"
+          spellcheck="false" />
+      </sdpi-item>
+    </div>
+  </div>
+
   <sdpi-item label="AE Target">
     <select id="aeTargetMode">
       <option value="newest">Always use newest</option>
@@ -187,38 +213,32 @@
     </select>
   </sdpi-item>
 
-  <!-- Status line for newest/foreground mode -->
   <div id="statusLine" class="status-line"></div>
 
   <script>
-    // -----------------------------------------------------------------------
-    // PI ↔ Plugin communication via Stream Deck websocket
-    // -----------------------------------------------------------------------
+    const RUN_SCRIPT_ACTION = "com.jordansteele.aftereffects.run-script";
+    const MENU_COMMAND_ACTION = "com.jordansteele.aftereffects.menu-command";
 
     let sdWebSocket = null;
     let sdUUID = null;
     let sdActionInfo = null;
+    let currentAction = null;
     let currentSettings = {};
 
-    // The global function that Stream Deck calls to initialize the PI
     function connectElgatoStreamDeckSocket(port, uuid, event, info, actionInfo) {
       sdUUID = uuid;
       sdActionInfo = JSON.parse(actionInfo);
+      currentAction = sdActionInfo.action;
       currentSettings = sdActionInfo.payload?.settings || {};
 
       sdWebSocket = new WebSocket(`ws://127.0.0.1:${port}`);
 
       sdWebSocket.onopen = () => {
-        // Register the PI
         sdWebSocket.send(JSON.stringify({ event, uuid }));
 
-        // Apply saved settings to UI
+        applyActionVisibility();
         applySettingsToUI(currentSettings);
-
-        // Request installed AE versions
         sendToPlugin({ event: "getInstalledAEVersions" });
-
-        // Request currently detected AE
         requestDetectedAE();
       };
 
@@ -234,6 +254,19 @@
           applySettingsToUI(currentSettings);
         }
       };
+    }
+
+    function isRunScriptAction() {
+      return currentAction === RUN_SCRIPT_ACTION;
+    }
+
+    function isMenuCommandAction() {
+      return currentAction === MENU_COMMAND_ACTION;
+    }
+
+    function applyActionVisibility() {
+      document.getElementById("runScriptConfig").classList.toggle("active", isRunScriptAction());
+      document.getElementById("menuCommandConfig").classList.toggle("active", isMenuCommandAction());
     }
 
     function sendToPlugin(payload) {
@@ -264,10 +297,6 @@
       });
     }
 
-    // -----------------------------------------------------------------------
-    // Handle messages from the plugin
-    // -----------------------------------------------------------------------
-
     function handlePluginMessage(payload) {
       if (payload.event === "installedAEVersions") {
         populateAEVersions(payload.versions);
@@ -279,21 +308,17 @@
 
     function populateAEVersions(versions) {
       const select = document.getElementById("aeTargetMode");
-
-      // Remove any previously added pinned options
       const existing = select.querySelectorAll("[data-pinned]");
       existing.forEach((el) => el.remove());
 
-      // Add installed versions as pinned options
-      for (const v of versions) {
+      for (const version of versions) {
         const opt = document.createElement("option");
-        opt.value = `pinned:${v.path}`;
-        opt.textContent = v.name;
+        opt.value = `pinned:${version.path}`;
+        opt.textContent = version.name;
         opt.setAttribute("data-pinned", "true");
         select.appendChild(opt);
       }
 
-      // Re-apply the saved target mode
       applyTargetSelection();
       requestDetectedAE();
     }
@@ -314,35 +339,46 @@
       }
     }
 
-    // -----------------------------------------------------------------------
-    // UI ↔ Settings sync
-    // -----------------------------------------------------------------------
-
     function applySettingsToUI(settings) {
-      // Script mode
-      const mode = settings.scriptMode || "file";
-      if (!settings.scriptMode) {
-        saveSettings({ scriptMode: "file" });
-      }
-      document.getElementById("scriptMode").value = mode;
-      toggleScriptMode(mode);
+      applyActionVisibility();
 
-      // Script path
-      if (settings.scriptPath) {
-        document.getElementById("scriptPath").value = settings.scriptPath;
+      if (isRunScriptAction()) {
+        applyRunScriptSettings(settings);
       }
 
-      // Inline script
-      if (settings.inlineScript) {
-        document.getElementById("inlineScript").value = settings.inlineScript;
-        checkInlineLength();
+      if (isMenuCommandAction()) {
+        applyMenuCommandSettings(settings);
       }
 
-      // AE target — default to foreground if not set
       if (!settings.aeTargetMode) {
         saveSettings({ aeTargetMode: "foreground" });
       }
       applyTargetSelection();
+    }
+
+    function applyRunScriptSettings(settings) {
+      const mode = settings.scriptMode || "file";
+      if (!settings.scriptMode) {
+        saveSettings({ scriptMode: "file" });
+      }
+
+      document.getElementById("scriptMode").value = mode;
+      toggleScriptMode(mode);
+      document.getElementById("scriptPath").value = settings.scriptPath || "";
+      document.getElementById("inlineScript").value = settings.inlineScript || "";
+      checkInlineLength();
+    }
+
+    function applyMenuCommandSettings(settings) {
+      const mode = settings.commandMode || "string";
+      if (!settings.commandMode) {
+        saveSettings({ commandMode: "string" });
+      }
+
+      document.getElementById("commandMode").value = mode;
+      toggleCommandMode(mode);
+      document.getElementById("commandId").value = settings.commandId || "";
+      document.getElementById("commandString").value = settings.commandString || "";
     }
 
     function applyTargetSelection() {
@@ -363,6 +399,11 @@
       document.getElementById("inlineSection").classList.toggle("active", mode === "inline");
     }
 
+    function toggleCommandMode(mode) {
+      document.getElementById("commandIdSection").classList.toggle("active", mode === "id");
+      document.getElementById("commandStringSection").classList.toggle("active", mode === "string");
+    }
+
     function checkInlineLength() {
       const text = document.getElementById("inlineScript").value;
       const lines = text.split("\n").length;
@@ -372,10 +413,6 @@
     function isValidScriptFile(path) {
       return /\.(jsx|jsxbin)$/i.test(path || "");
     }
-
-    // -----------------------------------------------------------------------
-    // Event listeners
-    // -----------------------------------------------------------------------
 
     document.getElementById("scriptMode").addEventListener("change", (e) => {
       const mode = e.target.value;
@@ -394,21 +431,13 @@
     document.getElementById("filePicker").addEventListener("change", (e) => {
       const file = e.target.files[0];
       if (file) {
-        // file.path is available in Electron; in SD's WebKit we may only get
-        // file.name (URL-encoded). webkitRelativePath is empty for single files.
-        // Decode URI components to get the real path.
         let filePath = file.path || decodeURIComponent(file.name);
-        // If the path doesn't start with /, try extracting from the input value
-        // which some WebKit builds expose as a full fake path
         if (!filePath.startsWith("/")) {
           const inputVal = e.target.value;
           if (inputVal.startsWith("/")) {
             filePath = inputVal;
           }
         }
-        // Some Electron/WebKit versions on Windows return forward slashes in
-        // file.path (e.g. C:/Users/...) — normalize to backslashes so that
-        // After Effects receives a valid Windows path.
         if (/^[a-zA-Z]:[\\/]/.test(filePath)) {
           filePath = filePath.replace(/\//g, "\\");
         }
@@ -420,13 +449,26 @@
         document.getElementById("scriptPath").value = filePath;
         saveSettings({ scriptPath: filePath });
       }
-      // Reset so the same file can be re-selected
       e.target.value = "";
     });
 
     document.getElementById("inlineScript").addEventListener("input", (e) => {
       checkInlineLength();
       saveSettings({ inlineScript: e.target.value || null });
+    });
+
+    document.getElementById("commandMode").addEventListener("change", (e) => {
+      const mode = e.target.value;
+      toggleCommandMode(mode);
+      saveSettings({ commandMode: mode });
+    });
+
+    document.getElementById("commandId").addEventListener("input", (e) => {
+      saveSettings({ commandId: e.target.value || null });
+    });
+
+    document.getElementById("commandString").addEventListener("input", (e) => {
+      saveSettings({ commandString: e.target.value || null });
     });
 
     document.getElementById("aeTargetMode").addEventListener("change", (e) => {
@@ -443,11 +485,9 @@
         });
       }
 
-      // Refresh status line
       requestDetectedAE();
     });
 
-    // Periodically refresh the detected AE (every 5s while PI is open)
     setInterval(() => {
       requestDetectedAE();
     }, 5000);

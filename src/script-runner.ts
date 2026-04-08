@@ -212,13 +212,15 @@ async function runOsascript(
   scriptOrPath: string
 ): Promise<void> {
   if (isAE2024(appName)) {
-    const escaped = scriptOrPath.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const appNameLiteral = JSON.stringify(appName);
     if (mode === "file") {
       // JXA: use Path() to pass a POSIX path to doscriptfile
-      const jxa = `var ae = Application("${appName}"); ae.activate(); ae.doscriptfile(Path("${escaped}"));`;
+      const filePathLiteral = JSON.stringify(scriptOrPath);
+      const jxa = `var ae = Application(${appNameLiteral}); ae.activate(); ae.doscriptfile(Path(${filePathLiteral}));`;
       await execFileAsync("osascript", ["-l", "JavaScript", "-e", jxa]);
     } else {
-      const jxa = `var ae = Application("${appName}"); ae.activate(); ae.doscript("${escaped}");`;
+      const scriptLiteral = JSON.stringify(scriptOrPath);
+      const jxa = `var ae = Application(${appNameLiteral}); ae.activate(); ae.doscript(${scriptLiteral});`;
       await execFileAsync("osascript", ["-l", "JavaScript", "-e", jxa]);
     }
   } else {
