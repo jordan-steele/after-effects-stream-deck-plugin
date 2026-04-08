@@ -6,7 +6,7 @@
   "scripts": {
     "build": "rollup -c",
     "watch": "rollup -c -w",
-    "package": "npm run build && npx streamdeck pack com.jordansteele.aftereffects.sdPlugin -o dist -f"
+    "package": "npm run build && npx streamdeck pack com.jordansteele.aftereffects.sdPlugin -o dist -f --no-update-check"
   },
   "keywords": ["streamdeck", "after-effects", "plugin"],
   "author": "Jordan Steele",

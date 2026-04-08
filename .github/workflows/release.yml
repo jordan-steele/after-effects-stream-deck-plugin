@@ -1,0 +1,56 @@
+name: Release Plugin
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve plugin version
+        id: version
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "release" ]]; then
+            version="${GITHUB_REF_NAME#v}"
+          else
+            version="$(node -p "require('./package.json').version")"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build and package plugin
+        run: npm run package -- --version "${{ steps.version.outputs.version }}"
+
+      - name: Upload packaged plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: stream-deck-plugin
+          path: dist/*.streamDeckPlugin
+          if-no-files-found: error
+
+      - name: Attach package to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.streamDeckPlugin
+          fail_on_unmatched_files: true
+          overwrite_files: true
