@@ -109,7 +109,7 @@ Restart Stream Deck after linking if the plugin does not appear immediately.
 
 The release workflow lives at `.github/workflows/release.yml`.
 
-- Publishing a GitHub Release builds the plugin, packages it, and uploads the `.streamDeckPlugin` file to that Release
+- Pushing a version tag builds the plugin, packages it, and creates or updates the matching GitHub Release with the `.streamDeckPlugin` file attached
 - The same workflow can also be run manually with `workflow_dispatch`
 - Packaging uses `--no-update-check` so CI does not depend on npm registry update checks from the Stream Deck CLI
 
