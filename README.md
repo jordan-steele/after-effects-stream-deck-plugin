@@ -75,6 +75,16 @@ When you press a button:
 
 The key resets to its default appearance after 2 seconds.
 
+## Known Issues
+
+### Window size restored when running a script (Windows)
+
+On Windows, some versions of After Effects restore the window to its pre-maximized size when a script is invoked via the command line. This is an After Effects limitation with no clean fix — see this [Adobe community thread](https://community.adobe.com/questions-529/afterfx-command-line-restores-maximized-window-any-way-to-duplicate-extendscript-invocation-29238) for details.
+
+As a partial mitigation, the plugin detects whether After Effects was maximized before the button was pressed and re-maximizes it afterward. This is handled in `runAfterFXPreservingWindow` in [src/script-runner.ts](src/script-runner.ts).
+
+**Recommended workaround:** avoid running After Effects maximized. Instead, manually resize the After Effects window to fill the screen — this avoids the snapped/maximized state entirely and the window size will be preserved across script invocations.
+
 ## Development
 
 ### Local setup
